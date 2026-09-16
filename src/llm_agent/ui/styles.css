@@ -1,0 +1,128 @@
+Screen {
+    background: #0a0a0a;
+    color: #d4a017;
+}
+
+Header {
+    dock: top;
+    height: 1;
+    background: #1a1a1a;
+    color: #d4a017;
+    padding: 0 1;
+}
+
+#body {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#rules-panel {
+    width: 34%;
+    height: 100%;
+    background: #141414;
+    border-right: solid #b8860b;
+    padding: 0;
+}
+
+#rules-title {
+    background: #1a1a1a;
+    color: #d4a017;
+    width: 100%;
+    height: 1;
+    padding: 0 1;
+    margin: 0 0 0 0;
+    text-align: left;
+}
+
+#rules-table {
+    height: 1fr;
+    margin-top: 0;
+    border: none;
+    background: #141414;
+}
+#rules-table .datatable--header {
+    background: #1a1a1a;
+    color: #d4a017;
+}
+#rules-table .datatable--cursor {
+    background: #2a1a00;
+    color: #daa520;
+}
+#rules-table .datatable--hover {
+    background: #1a0f00;
+}
+#rules-table .datatable--odd-row {
+    background: #141414;
+    color: #d4a017;
+}
+#rules-table .datatable--even-row {
+    background: #111111;
+    color: #d4a017;
+}
+
+#chat-column {
+    width: 66%;
+    height: 100%;
+    layout: vertical;
+}
+
+#chat-log {
+    height: 1fr;
+    padding: 1 2;
+    background: #0a0a0a;
+    border: none;
+}
+
+#composer {
+    height: 4;
+    padding: 0 1;
+    background: #1a1a1a;
+    border-top: solid #b8860b;
+}
+
+#chat-input {
+    background: #1e1e1e;
+    border: round #b8860b;
+    color: #ffeebb;
+}
+#chat-input:focus {
+    border: round #d4a017;
+    background: #1a0f00;
+    color: #ffeebb;
+}
+#chat-input .input--placeholder {
+    color: #6e5a1e;
+}
+#chat-input:focus .input--placeholder {
+    color: #6e5a1e;
+}
+
+.scrollbar {
+    background: #0a0a0a;
+}
+.scrollbar--vertical {
+    background: #1a1a1a;
+    width: 1;
+}
+.scrollbar--horizontal {
+    background: #1a1a1a;
+    height: 1;
+}
+.scrollbar-thumb {
+    background: #444444;
+}
+.scrollbar-thumb:hover {
+    background: #555555;
+}
+.scrollbar-track {
+    background: #1a1a1a;
+}
+
+Footer {
+    background: #1a1a1a;
+    color: #d4a017;
+    height: 1;
+}
+Footer .footer--key {
+    color: #daa520;
+}
