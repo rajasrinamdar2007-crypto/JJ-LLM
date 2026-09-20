@@ -1,0 +1,10 @@
+schema_version: 2
+rule_id: dark_02a8dc
+steps:
+  - check:
+      op: avg_in_window
+      metric: brightness
+      threshold: 0.25
+      comparison: "<="
+    on_exit:
+      action: flag_dark_condition

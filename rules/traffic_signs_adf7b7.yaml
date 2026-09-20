@@ -1,0 +1,20 @@
+schema_version: 2
+rule_id: traffic_signs_adf7b7
+metadata:
+  name: Traffic Signs Detection
+  description: Automatically detects traffic signs to monitor road assets and signage visibility.
+  category: asset_detection
+  severity: low
+steps:
+  - check:
+      op: is_visible
+      label: traffic_sign
+  - check:
+      op: confidence
+      threshold: 0.75
+  - check:
+      op: persisted_for
+      frames: 3
+    on_exit:
+      action: log_event
+      message: Traffic sign detected
