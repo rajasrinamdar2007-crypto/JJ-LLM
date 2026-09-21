@@ -14,7 +14,7 @@ RULES_DIR = Path(__file__).resolve().parent.parent.parent / "rules"
 
 class App(App[None]):
     BINDINGS: ClassVar = [Binding("ctrl+c", "ctrl_c", priority=True)]
-    CSS_PATH = "ui/styles.css"
+    CSS_PATH = str(Path(__file__).resolve().parent / "ui" / "styles.css")
     TITLE = "rulebox"
     _last_ctrl_c: float = 0.0
 

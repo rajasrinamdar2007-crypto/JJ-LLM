@@ -9,3 +9,7 @@ dist/
 # uv
 /.uv/
 *.pth
+
+# Environment variables
+.env
+Secret.env

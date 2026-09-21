@@ -1,0 +1,18 @@
+schema_version: 2
+rule_id: pothole_84fb2a
+steps:
+  - check:
+      op: is_visible
+      value: true
+    on_exit:
+      continue: true
+  - check:
+      op: confidence
+      gte: 0.7
+    on_exit:
+      continue: true
+  - check:
+      op: persisted_for
+      gte: 0.5s
+    on_exit:
+      action: alert

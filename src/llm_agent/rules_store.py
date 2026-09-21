@@ -36,17 +36,19 @@ class RulesStore:
 
         for p in sorted(self.rules_dir.glob("*.json")):
             try:
-                data = json.loads(p.read_text())
-                self._rules.append(
-                    Rule(
-                        id=data.get("id", p.stem),
-                        name=data.get("name", p.stem),
-                        query=data.get("query", ""),
-                        created_at=data.get("created_at", ""),
-                    )
-                )
-            except (json.JSONDecodeError, KeyError):
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
                 continue
+            if not isinstance(data, dict):
+                continue
+            self._rules.append(
+                Rule(
+                    id=data.get("id", p.stem),
+                    name=data.get("name", p.stem),
+                    query=data.get("query", ""),
+                    created_at=data.get("created_at", ""),
+                )
+            )
         return self._rules
 
     def create(self, name: str, query: str) -> Rule:
@@ -55,5 +57,7 @@ class RulesStore:
         rule = Rule(id=rule_id, name=name, query=query, created_at=created)
         self._rules.append(rule)
         rule_file = self.rules_dir / f"{rule_id}.json"
-        rule_file.write_text(json.dumps(rule.to_dict(), indent=2) + "\n")
+        rule_file.write_text(
+            json.dumps(rule.to_dict(), indent=2) + "\n", encoding="utf-8"
+        )
         return rule

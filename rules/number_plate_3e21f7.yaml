@@ -1,0 +1,16 @@
+schema_version: 2
+rule_id: number_plate_3e21f7
+target_class: number_plate
+steps:
+  - check:
+      op: is_visible
+  - check:
+      op: confidence
+      args:
+        gt: 0.5
+  - check:
+      op: persisted_for
+      args:
+        ms: 200
+    on_exit:
+      action: emit_detection
