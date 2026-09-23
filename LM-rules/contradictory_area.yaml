@@ -1,0 +1,20 @@
+schema_version: 2
+rule_id: contradictory_area
+description: >
+  Deliberately contradictory rule: the crack bounding-box area must be both
+  strictly greater than 40,000 px^2 and strictly less than 40,000 px^2 at the
+  same time.  Impossible by construction -- Stage 2 (formal) must reject it.
+track:
+  class: crack
+steps:
+  - check:
+      gt:
+        left: { op: area, box: { op: bbox, entity: "$entity" } }
+        right: 40000
+  - check:
+      lt:
+        left: { op: area, box: { op: bbox, entity: "$entity" } }
+        right: 40000
+  - on_exit:
+      do:
+        - mark: success

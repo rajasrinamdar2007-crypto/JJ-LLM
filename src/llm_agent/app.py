@@ -9,7 +9,7 @@ from textual.binding import Binding
 
 from llm_agent.ui.main_screen import MainScreen
 
-RULES_DIR = Path(__file__).resolve().parent.parent.parent / "rules"
+RULES_DIR = Path(__file__).resolve().parent.parent.parent / "LM-rules"
 
 
 class App(App[None]):

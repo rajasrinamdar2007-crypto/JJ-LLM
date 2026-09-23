@@ -1,0 +1,21 @@
+schema_version: 2
+rule_id: crack_large_area
+description: >
+  A crack instance whose most recent bounding-box area exceeds 40,000 px^2
+  (e.g. a wide / significant crack) that then leaves the frame.
+track:
+  class: crack
+steps:
+  - check:
+      gt:
+        left: { op: area, box: { op: bbox, entity: "$entity" } }
+        right: 40000
+  - on_exit:
+      do:
+        - emit:
+            event_type: crack_large_confirmed
+            confidence: { op: confidence, entity: "$entity" }
+            payload:
+              tracker_id: "$entity"
+              area: { op: area, box: { op: bbox, entity: "$entity" } }
+        - mark: success

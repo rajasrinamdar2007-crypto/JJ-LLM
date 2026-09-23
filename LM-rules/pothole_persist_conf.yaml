@@ -1,0 +1,26 @@
+schema_version: 2
+rule_id: pothole_persist_conf
+description: >
+  A pothole instance appears across 5 frames with a mean confidence >= 0.60
+  over the frames it is present; when it exits the view the rule succeeds.
+track:
+  class: pothole
+steps:
+  - check:
+      gte:
+        left: { op: persisted_for, entity: "$entity", window: { frames: 5 } }
+        right: 5
+  - check:
+      gte:
+        left: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+        right: 0.6
+  - on_exit:
+      leave_frames: 1
+      do:
+        - emit:
+            event_type: pothole_persistent_confirmed
+            confidence: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+            payload:
+              tracker_id: "$entity"
+              frames_seen: { op: persisted_for, entity: "$entity", window: { frames: 60 } }
+        - mark: success

@@ -1,0 +1,25 @@
+schema_version: 2
+rule_id: crack_da1c3e
+description: >
+  Detects a crack tracked across at least 5 frames with average confidence
+  greater than or equal to 0.60, emitting an event when the crack exits view.
+track:
+  class: crack
+steps:
+  - check:
+      gte:
+        left: { op: persisted_for, entity: "$entity", window: { frames: 5 } }
+        right: 5
+  - check:
+      gte:
+        left: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+        right: 0.6
+  - on_exit:
+      leave_frames: 1
+      do:
+        - emit:
+            event_type: crack_detected
+            confidence: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+            payload:
+              tracker_id: "$entity"
+        - mark: success

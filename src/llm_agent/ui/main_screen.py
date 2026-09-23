@@ -79,7 +79,7 @@ class MainScreen(Screen[None]):
             rows.append((path.stem, str(data.get("rule_id", path.stem)), created))
 
         if not rows:
-            self._chat_log.write(Text("No rules in rules/ yet"))
+            self._chat_log.write(Text("No rules in LM-rules/ yet"))
         for row in rows:
             self._rules_table.add_row(*row)
 
@@ -109,16 +109,34 @@ class MainScreen(Screen[None]):
 
         try:
             # The LLM call is blocking, so run it in a worker thread to keep the UI alive
-            is_successful = await asyncio.to_thread(
+            outcome = await asyncio.to_thread(
                 create_and_save_rule, query, rule_id, self.rules_dir
             )
         except Exception as exc:  # noqa: BLE001
             self._chat_log.write(Text(f"Agent: Something went wrong: {exc}"))
         else:
-            if is_successful:
+            if outcome.saved:
                 self._chat_log.write(
-                    Text(f"Agent: Success! {rule_id}.yaml is saved and ready.")
+                    Text(f"Agent: Success! {outcome.rule_id}.yaml is saved and ready.")
                 )
+                # Stage 1 near-duplicate flags: informational only, human decides.
+                for finding in outcome.similarities:
+                    note = (
+                        f"Agent: Note -- this may be a near-duplicate of "
+                        f"{finding.existing} (class {finding.class_name}, "
+                        f"similarity {finding.similarity:.2f}). "
+                        f"Shared ops: {', '.join(finding.shared_signatures)}. "
+                    )
+                    if finding.differing_thresholds:
+                        note += (
+                            "Differs only in: "
+                            + "; ".join(finding.differing_thresholds)
+                            + "."
+                        )
+                    note += (
+                        " Keep both, discard the new rule, or ask Gemini to edit it."
+                    )
+                    self._chat_log.write(Text(note))
                 self._populate_rules()  # show the new rule in the table
             else:
                 self._chat_log.write(
