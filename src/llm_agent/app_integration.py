@@ -50,18 +50,26 @@ def _load_existing(rules_dir: Path, skip_stem: str) -> list[Rule]:
 
 
 def create_and_save_rule(
-    user_english: str, rule_name: str, rules_dir: Path | None = None
+    user_english: str,
+    rule_name: str,
+    rules_dir: Path | None = None,
+    on_status=None,
 ) -> SaveOutcome:
     classes = load_rule_classes()
     translator = RuleTranslator(classes=classes)
     validator = RuleValidator(classes=classes)
     rules_dir = rules_dir or RULES_DIR
 
-    print(f"Asking Gemini to translate: '{user_english}'...")
+    if on_status:
+        on_status(f"Translating: '{user_english}'...")
+    else:
+        print(f"Asking Gemini to translate: '{user_english}'...")
 
     try:
         # 1. Ask Gemini to write the YAML code
-        yaml_code = translator.translate_to_yaml(user_english, rule_name)
+        yaml_code = translator.translate_to_yaml(
+            user_english, rule_name, on_status=on_status
+        )
 
         # 2. Force the Validator to check the code before we save it
         validator.parse_rule(yaml_code)

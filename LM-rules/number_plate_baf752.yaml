@@ -1,0 +1,25 @@
+schema_version: 2
+rule_id: number_plate_baf752
+description: >
+  Tracks road damage or defect detections associated with vehicle number plate scans,
+  confirming persistence over multiple frames before emitting an exit event.
+track:
+  class: pothole
+steps:
+  - check:
+      gte:
+        left: { op: persisted_for, entity: "$entity", window: { frames: 5 } }
+        right: 5
+  - check:
+      gte:
+        left: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+        right: 0.5
+  - on_exit:
+      leave_frames: 1
+      do:
+        - emit:
+            event_type: number_plate_detected
+            confidence: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+            payload:
+              tracker_id: "$entity"
+        - mark: success

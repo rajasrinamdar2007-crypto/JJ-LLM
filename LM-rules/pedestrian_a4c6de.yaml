@@ -1,0 +1,24 @@
+schema_version: 2
+rule_id: pedestrian_a4c6de
+description: >
+  Tracks entity persistence and confidence for road damage detection and emits an event when leaving frame.
+track:
+  class: pothole
+steps:
+  - check:
+      gte:
+        left: { op: persisted_for, entity: "$entity", window: { frames: 5 } }
+        right: 5
+  - check:
+      gte:
+        left: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+        right: 0.5
+  - on_exit:
+      leave_frames: 1
+      do:
+        - emit:
+            event_type: pedestrian_event
+            confidence: { op: avg_in_window, entity: "$entity", metric: confidence, window: { frames: 5 } }
+            payload:
+              tracker_id: "$entity"
+        - mark: success

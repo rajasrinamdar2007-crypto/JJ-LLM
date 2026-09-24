@@ -1,0 +1,20 @@
+schema_version: 2
+rule_id: car_e8888e
+description: >-
+  Detects road damage entities persisting across multiple frames and emits an event on exit.
+track:
+  class: pothole
+steps:
+  - check:
+      gte:
+        left: { op: persisted_for, entity: "$entity", window: { frames: 5 } }
+        right: 5
+  - on_exit:
+      leave_frames: 1
+      do:
+        - emit:
+            event_type: damage_detected
+            confidence: { op: confidence, entity: "$entity" }
+            payload:
+              tracker_id: "$entity"
+        - mark: success

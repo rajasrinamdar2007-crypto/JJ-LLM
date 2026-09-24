@@ -13,6 +13,23 @@ from llm_agent.grammar_spec import build_grammar_spec
 
 _RETRYABLE_CODES = {408, 429, 500, 502, 503, 504}
 _MAX_ATTEMPTS = 3
+#: Overall wall-clock budget for one translate call.  Bounding the *total*
+#: (instead of "3 attempts x per-request timeout") is what stops a flaky
+#: gateway from silently eating several minutes of the user's time.
+_TOTAL_DEADLINE_S = 90.0
+#: Per-read timeout for the streaming request.  With streaming this is a
+#: per-chunk read timeout, so a hung gateway surfaces in seconds instead of
+#: blocking the whole generation for a single fixed 60s envelope.  (A lower
+#: number also lowers the X-Server-Timeout header the SDK sends to Google's
+#: gateway, which is what the 504s were hanging on.)
+_HTTP_TIMEOUT_MS = 45_000
+#: Overall wall-clock budget for one translate call.  Bounding the total
+#: (instead of 3 * per-request timeout) is what stops a flaky gateway from
+#: silently eating several minutes of the user's time.
+_TOTAL_DEADLINE_S = 90.0
+#: Per-request wait.  With streaming this is a per-read timeout, so a hung
+#: gateway surfaces quickly instead of blocking for the full 60 s.
+_HTTP_TIMEOUT_MS = 30_000
 
 _EXAMPLE_RULE = """schema_version: 2
 rule_id: {rule_name}
@@ -46,7 +63,9 @@ class RuleTranslator:
     def __init__(self, classes: list[str] | None = None):
         # This turns on the Gemini brain
         api_key = resolve_api_key()
-        self.client = genai.Client(api_key=api_key, http_options={"timeout": 60_000})
+        self.client = genai.Client(
+            api_key=api_key, http_options={"timeout": _HTTP_TIMEOUT_MS}
+        )
         self.classes = classes or load_rule_classes()
 
         # A strict, machine-derived grammar so Gemini writes rules the engine can parse.
@@ -56,7 +75,7 @@ You MUST output ONLY valid YAML matching the grammar below.
 Do not include markdown blocks like ```yaml. Do not say 'Here is your code'. Do not add prose.
 
 Allowed classes for track.class, class_name, and entity references:
-{', '.join(self.classes) if self.classes else 'NONE - no classes configured'}
+{", ".join(self.classes) if self.classes else "NONE - no classes configured"}
 
 {_build_grammar_block()}
 
@@ -79,18 +98,24 @@ and replace the rule_id/class with the ones you are asked for):
 """.strip()
         self.model = "gemini-3.6-flash"
 
-    def translate_to_yaml(self, english_sentence: str, rule_name: str) -> str:
+    def translate_to_yaml(
+        self, english_sentence: str, rule_name: str, on_status=None
+    ) -> str:
         prompt = (
             f"Make a rule for this: '{english_sentence}'. The rule_id must be: "
             f"{rule_name} (equal to the filename stem). track.class must be one of "
             f"the allowed classes and MUST be present. The description top-level "
             f"key is MANDATORY."
         )
-        print("Asking Gemini to translate...")
+        if on_status:
+            on_status("Asking Gemini to translate...")
 
+        deadline = time.monotonic() + _TOTAL_DEADLINE_S
         for attempt in range(_MAX_ATTEMPTS):
+            if on_status:
+                on_status(f"Attempt {attempt + 1}/{_MAX_ATTEMPTS}...")
             try:
-                response = self.client.models.generate_content(
+                stream = self.client.models.generate_content_stream(
                     model=self.model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
@@ -98,27 +123,49 @@ and replace the rule_id/class with the ones you are asked for):
                         temperature=0.0,
                     ),
                 )
-            except (httpx.HTTPError, TimeoutError, OSError):
+                parts = []
+                for chunk in stream:
+                    if time.monotonic() > deadline:
+                        raise TimeoutError(
+                            f"Gemini exceeded the {_TOTAL_DEADLINE_S:.0f}s overall deadline."
+                        )
+                    piece = getattr(chunk, "text", None)
+                    if piece:
+                        parts.append(piece)
+                        if on_status:
+                            on_status(
+                                f"Streaming rule (~{len(''.join(parts))} chars)..."
+                            )
+            except (httpx.HTTPError, TimeoutError, OSError) as exc:
                 if attempt < _MAX_ATTEMPTS - 1:
+                    if on_status:
+                        on_status(
+                            f"Network issue ({exc.__class__.__name__}); retrying..."
+                        )
                     self._backoff(attempt)
                     continue
                 raise
             except errors.APIError as exc:
                 if exc.code in _RETRYABLE_CODES and attempt < _MAX_ATTEMPTS - 1:
-                    print(
-                        f"Gemini busy ({exc.code} {exc.status}); retrying in a moment..."
-                    )
+                    if on_status:
+                        on_status(
+                            f"Gemini busy ({exc.code} {exc.status}); retrying in a moment..."
+                        )
+                    else:
+                        print(
+                            f"Gemini busy ({exc.code} {exc.status}); retrying in a moment..."
+                        )
                     self._backoff(attempt)
                     continue
                 raise
 
-            text = getattr(response, "text", None)
+            text = "".join(parts).strip()
             if not text:
                 raise RuntimeError(
                     "Gemini returned no text (empty or blocked response)."
                 )
-            return text.strip()
-        raise RuntimeError("Gemini request failed after all retries.")
+            return text
+        raise RuntimeError(f"Gemini request failed after {_MAX_ATTEMPTS} attempts.")
 
     def _backoff(self, attempt: int) -> None:
         delay = min(2**attempt, 8) + random.uniform(0, 1)
@@ -128,7 +175,9 @@ and replace the rule_id/class with the ones you are asked for):
 def _build_grammar_block() -> str:
     grammar = build_grammar_spec()
     block = "Strict grammar:\n" + grammar
-    block += "\n\nAllowed classes: see above list; ONLY these class names are permitted."
+    block += (
+        "\n\nAllowed classes: see above list; ONLY these class names are permitted."
+    )
     return block
 
 

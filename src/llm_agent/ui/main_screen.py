@@ -107,10 +107,19 @@ class MainScreen(Screen[None]):
             Text(f"Agent: Asking Gemini to write YAML for '{rule_id}'...")
         )
 
+        def _status(message: str) -> None:
+            # create_and_save_rule runs in a worker thread; hop back onto the
+            # Textual event loop to surface live progress instead of a blank wait.
+            self.app.call_from_thread(self._chat_log.write, Text(f"Agent: {message}"))
+
         try:
             # The LLM call is blocking, so run it in a worker thread to keep the UI alive
             outcome = await asyncio.to_thread(
-                create_and_save_rule, query, rule_id, self.rules_dir
+                create_and_save_rule,
+                query,
+                rule_id,
+                self.rules_dir,
+                on_status=_status,
             )
         except Exception as exc:  # noqa: BLE001
             self._chat_log.write(Text(f"Agent: Something went wrong: {exc}"))
